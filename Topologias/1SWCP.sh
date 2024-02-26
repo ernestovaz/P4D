@@ -1,11 +1,16 @@
 #!/bin/bash
-docker run -itd --name h1  --network="none" --privileged -v shared:/codes --workdir /codes dnredson/net
-docker run -itd --name h2   --network="none" --privileged -v shared:/codes  --workdir /codes dnredson/net
-docker run -itd --name sw1  --network="none" --privileged -v shared:/codes  --workdir /codes dnredson/p4d
+docker run -itd --name h1  --network="none" --privileged -v ./Build:/p4d/Build --workdir /p4d  dnredson/net
+docker run -itd --name h2  --network="none" --privileged -v ./Build:/p4d/Build --workdir /p4d  dnredson/net
+docker run -itd --name sw1 --network="none" --privileged -v ./Build:/p4d/Build --workdir /p4d  dnredson/p4d
+
+(docker exec sw1 ls "$1") || exit
 
 #Cria veth peers
 sudo ip link add veth1 type veth peer name veth2
 sudo ip link add veth3 type veth peer name veth4
+
+sudo ip link set veth1 promisc on
+sudo ip link set veth3 promisc on
 
 #Variáveis com os PIDs de cada elemento
 PIDSW1=$(docker inspect -f '{{.State.Pid}}' sw1)
@@ -38,10 +43,6 @@ sudo nsenter -t $PIDH2 -n ip addr add 10.0.2.2/24 dev veth4
 sudo nsenter -t $PIDH2 -n ip link set dev veth4 address 00:00:00:00:02:02
 sudo nsenter -t $PIDH2 -n ip link set veth4 up
 
-
-sudo ip link set veth1 promisc on
-sudo ip link set veth3 promisc on
-
 docker exec h1 ip link set veth2 promisc on
 docker exec h2 ip link set veth4 promisc on
 docker exec h1 ethtool -K veth2 tx off tx off
@@ -65,9 +66,9 @@ docker exec sw1 sh -c 'arp -i veth1 -s 10.0.1.2 00:00:00:00:01:02'
 
 
 #Inicia o BMV2
-docker exec sw1 sh -c 'nohup simple_switch  --thrift-port 50001 -i 1@veth1 -i 2@veth3  standard.json &'
-# Para iniciar com o log: simple_switch  --log-console --thrift-port 50001 -i 1@veth1 -i 2@veth3  standard.json
-#Adiciona regras via API do BMv2
-docker exec sw1 sh -c 'echo "table_add MyIngress.ipv4_lpm ipv4_forward 10.0.1.2  => 00:00:00:00:01:02 1" | simple_switch_CLI --thrift-port 50001'
-docker exec sw1 sh -c 'echo "table_add MyIngress.ipv4_lpm ipv4_forward 10.0.2.2 =>  00:00:00:00:02:02 2" | simple_switch_CLI --thrift-port 50001'
+screen -dmS p4d docker exec sw1 simple_switch --log-console --thrift-port 50001 -i 1@veth1 -i 2@veth3  "$1"
 
+#Adiciona regras via API do BMv2
+docker exec sw1 sh -c 'echo "table_add MyIngress.ipv4_lpm ipv4_forward 10.0.1.2/32  => 00:00:00:00:01:02 1" | simple_switch_CLI --thrift-port 50001'
+docker exec sw1 sh -c 'echo "table_add MyIngress.ipv4_lpm ipv4_forward 10.0.2.2/32 =>  00:00:00:00:02:02 2" | simple_switch_CLI --thrift-port 50001'
+#docker exec sw1 sh -c 'echo "table_set_default MyEgress.swtrace add_swtrace  1" | simple_switch_CLI --thrift-port 50001'

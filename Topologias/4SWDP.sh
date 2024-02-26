@@ -1,10 +1,10 @@
 #!/bin/bash
-docker run -itd --name h1  --network="none" --privileged -v shared:/codes --workdir /codes dnredson/net
-docker run -itd --name h2   --network="none" --privileged -v shared:/codes  --workdir /codes dnredson/net
-docker run -itd --name sw1  --network="none" --privileged -v shared:/codes  --workdir /codes dnredson/p4d
-docker run -itd --name sw2  --network="none" --privileged -v shared:/codes  --workdir /codes dnredson/p4d
-docker run -itd --name sw3  --network="none" --privileged -v shared:/codes  --workdir /codes dnredson/p4d
-docker run -itd --name sw4  --network="none" --privileged -v shared:/codes  --workdir /codes dnredson/p4d
+docker run -itd --name h1   --network="none" --privileged -v shared:/p4d --workdir /p4d/Build dnredson/net
+docker run -itd --name h2   --network="none" --privileged -v shared:/p4d  --workdir /p4d/Build dnredson/net
+docker run -itd --name sw1  --network="none" --privileged -v shared:/p4d  --workdir /p4d/Build dnredson/p4d
+docker run -itd --name sw2  --network="none" --privileged -v shared:/p4d  --workdir /p4d/Build dnredson/p4d
+docker run -itd --name sw3  --network="none" --privileged -v shared:/p4d  --workdir /p4d/Build dnredson/p4d
+docker run -itd --name sw4  --network="none" --privileged -v shared:/p4d  --workdir /p4d/Build dnredson/p4d
 
 sudo ip link add veth1 type veth peer name veth2
 sudo ip link add veth3 type veth peer name veth4
