@@ -55,14 +55,14 @@ def main():
     payload_size = int(sys.argv[3])
     mtu = int(sys.argv[4])
 
-    fragment_size = mtu
-    fragment_count = payload_size // mtu
-    last_fragment_size = payload_size % mtu
-    has_last_fragment = (last_fragment_size > 0) 
+    full_fragments = payload_size // mtu
+    full_fragment_size = mtu
+    partial_fragment_size = payload_size - (full_fragments * mtu)
 
-    payload = generate_payload(fragment_size)
-    if has_last_fragment:
-        last_payload = generate_payload(last_fragment_size)
+    if full_fragments > 0:
+        full_payload = generate_payload(full_fragment_size)
+    if partial_fragment_size > 0:
+        partial_payload = generate_payload(partial_fragment_size)
 
     if len(sys.argv)<3:
         print('pass 2 arguments: <destination> "<message>"')
@@ -71,25 +71,28 @@ def main():
     iface = "host1-p1-sw1-p1"
     addr = socket.gethostbyname(sys.argv[1])
     bind_layers(IP, nodeCount, proto = 253)
-
-    pkt = (Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff") 
-        / IP(dst=addr, proto=253) / nodeCount(count = 0,INT=[])
-        / payload)
-
-    if has_last_fragment:
-        last_pkt = (Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff") 
+    if full_fragments > 0:
+        full_pkt = (Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff") 
             / IP(dst=addr, proto=253) / nodeCount(count = 0,INT=[])
-            / last_payload)
+            / full_payload)
+        full_pkt.show2()
+
+    if partial_fragment_size > 0:
+        partial_pkt = (Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff") 
+            / IP(dst=addr, proto=253) / nodeCount(count = 0,INT=[])
+            / partial_payload)
+        partial_pkt.show2()
+
 
     #sendp(pkt, iface=iface)
     #pkt.show2()
-    pkt.show2()
     #hexdump(pkt)
     
     try:
-        sendp(pkt, iface=iface, inter=s_per_pkts, count=fragment_count)
-        if has_last_fragment:
-            sendp(last_pkt, iface=iface)
+        if full_fragments > 0:
+            sendp(full_pkt, iface=iface, inter=s_per_pkts, count=full_fragments)
+        if partial_fragment_size > 0:
+            sendp(partial_pkt, iface=iface)
     
 
     except KeyboardInterrupt:
